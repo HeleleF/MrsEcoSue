@@ -78,6 +78,12 @@ select {
 }
 
 /* OWN STUFF */
+
+body {
+  color: #454545;
+  font-family: sans-serif;
+}
+
 h1 {
-    color: red;
+    color: #1f74bd;
 }

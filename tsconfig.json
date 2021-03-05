@@ -3,7 +3,9 @@
       "target": "esnext",
       "module": "commonjs",
       "outDir": "dist",
-      "sourceMap": true
+      "strict": true,
+      "sourceMap": false,
+      "removeComments": true
     },
     "include": [
       "src/**/*.ts"
