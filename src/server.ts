@@ -15,6 +15,6 @@ wss.on('connection', (ws) => {
   console.log('Client connected');
 
   const loader = new Loader(ws);
-  ws.on('message', (data) => loader.start(data.toString()));
+  ws.on('message', (data) => loader.createPDF(data.toString()));
   ws.on('close', () => console.log('Client disconnected'));
 });
