@@ -13,3 +13,18 @@ export interface APIResponse {
   result: 'success' | 'error';
   status: number;
 }
+
+export interface MSEConfig {
+  store?: {
+    page?: {
+      data?: {
+        score?: {
+          id: number,
+          title: string,
+          pages_count: number,
+          tags: string[]
+        }
+      }
+    }
+  }
+}
