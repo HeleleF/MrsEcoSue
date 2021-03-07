@@ -1,6 +1,7 @@
 ### Own stuff
 udebug
 *.d.ts
+!svg2pdf.d.ts
 tmp.pdf
 
 ### Node ###
