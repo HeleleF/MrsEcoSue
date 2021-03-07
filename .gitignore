@@ -1,5 +1,6 @@
 ### Own stuff
 udebug
+*.d.ts
 
 ### Node ###
 # Logs
