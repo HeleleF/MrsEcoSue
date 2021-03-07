@@ -1,10 +1,11 @@
 import WebSocket from 'ws';
 import axios, { AxiosInstance } from 'axios';
+import { JSDOM } from 'jsdom';
 
 import PDFDocument from 'pdfkit';
 import SVGtoPDF from 'svg-to-pdfkit';
 
-import { APIResponse, delay } from './utils';
+import { MSEConfig, APIResponse } from './utils';
 import { createWriteStream } from 'fs';
 import { readFile } from 'fs/promises';
 import { SECRETS } from './secrets';
@@ -12,9 +13,6 @@ import { SECRETS } from './secrets';
 export class Loader {
   private ws: WebSocket;
   private axios: AxiosInstance;
-  private readonly ID_PATTERN = /<meta property="al:ios:url" content="[^\d\s]+(\d+)">/;
-  private readonly CNT_PATTERN = /pages_count&quot;:(\d+)/;
-  private readonly TITLE_PATTERN = /title&quot;:&quot;(.*)&quot;/;
 
   constructor(websocket: WebSocket) {
     this.ws = websocket;
@@ -28,19 +26,33 @@ export class Loader {
     });
   }
 
-  async get(uri: string) {
+  private async extractMetadata(uri: string) {
 
     try {
       const { data } = await this.axios.get<string>(uri);
+      const frag = JSDOM.fragment(data);
 
-      const [, pages] = data.match(this.CNT_PATTERN) ?? [];
-      const [, sid] = data.match(this.ID_PATTERN) ?? [];
-      const [, title] = data.match(this.TITLE_PATTERN) ?? [];
-  
-      if (!sid) return { error: 'No sid found!' };
-      if (!pages) return { error: 'No page count found!' };
+      const div = frag.querySelectorAll('div')[1];
+      const attr = Object.values(div.dataset)[0];
 
-      return { metadata: { sid, pages, title: title ?? 'Sheet', tags: 'sheet piano' }};
+      const config = JSON.parse(attr ?? '{}') as MSEConfig;
+      const { id, pages_count, title, tags } = config.store?.page?.data?.score ?? {};
+
+      if (!id) {
+        return { error: 'No sid found!' };
+      }
+      if (!pages_count) {
+        return { error: 'No page count found!' };
+      }
+
+      return {
+        metadata: {
+          sid: id,
+          pages: pages_count,
+          title: title || 'Sheet',
+          tags: tags ?? []
+        }
+      };
 
     } catch (err) {
       console.log(err);
@@ -48,7 +60,7 @@ export class Loader {
     }
   }
 
-  async start(uri: string) {
+  async createPDF(uri: string) {
     if (!uri) {
       this.ws.send('No data!');
       return;
@@ -57,7 +69,7 @@ export class Loader {
     console.log('Adding uri', uri);
     this.ws.send('Starting');
 
-    const { metadata, error } = await this.get(uri);
+    const { metadata, error } = await this.extractMetadata(uri);
   
     if (error) {
       this.ws.send(error);
@@ -72,13 +84,13 @@ export class Loader {
       pdfVersion: '1.7ext3',
       info: {
         Title: title,
-        Keywords: tags,
+        Keywords: tags.join(' '),
       },
       margin: 0,
     });
     doc.pipe(createWriteStream('tmp.pdf'));
 
-    const jobs = Array.from({ length: parseInt(pages, 10) }, async (_, idx) => {
+    const jobs = Array.from({ length: pages }, async (_, idx) => {
       const { data } = await this.axios.get<APIResponse>(
         `${SECRETS.MES_API_URL}?id=${sid}&index=${idx}&type=img&v2=1`,
         {
