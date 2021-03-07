@@ -1,19 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mrs EcoSue</title>
-    <link rel="stylesheet" type="text/css" href="/index.css" />
-</head>
-<body>
-    <h1>Mrs. Eco Sue</h1>
-    <div>
-        <p>Enter a url and click the button!</p>
-        <button>Load!</button>
+    <link rel="stylesheet" type="text/css" href="/client.css" />
+  </head>
+  <body>
+    <div class="column">
+      <h1 class="header">Mrs. Eco Sue</h1>
+      <input type="text" class="url-input" placeholder="Paste url here..." />
+      <button class="btn">Load!</button>
+      <div class="logs"></div>
     </div>
-    <div class="wss"></div>
-    <script src="index.js" defer></script>
-</body>
+    <iframe class="preview"></iframe>
+    <script src="client.js" defer></script>
+  </body>
 </html>

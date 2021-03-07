@@ -79,11 +79,60 @@ select {
 
 /* OWN STUFF */
 
-body {
-  color: #454545;
-  font-family: sans-serif;
+:root {
+  --ms-blue: #1f74bd;
 }
 
-h1 {
-    color: #1f74bd;
+body {
+  color: #454545;
+  background-color: #e6e6e6;
+  font-family: sans-serif;
+
+  display: flex;
+  flex-direction: row;
+}
+
+.header {
+  color: var(--ms-blue);
+  font-size: 9em;
+  margin-top: 2.25em;
+  margin-bottom: 0.1em;
+}
+
+.url-input {
+  width: 45em;
+  height: 3em;
+  padding: 0.5em 0.5em;
+  border: 1px solid var(--ms-blue);
+  border-radius: 15px;
+}
+.url-input:focus {
+  outline: none;
+}
+
+.btn {
+  cursor: pointer;
+  margin: 1em;
+  font-size: 3em;
+  color: var(--ms-blue);
+
+  border: 1px solid var(--ms-blue);
+  border-radius: 10px;
+  padding: 0 0.5em;
+}
+
+.btn:focus {
+  outline: none;
+}
+
+.column {
+  width: 60vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.preview {
+  width: 40vw;
+  border: none;
 }
