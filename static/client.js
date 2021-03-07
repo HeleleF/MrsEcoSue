@@ -3,10 +3,14 @@ ws.binaryType = 'arraybuffer';
 
 const logger = document.querySelector('.logs');
 const input = document.querySelector('input');
-const iframe = document.querySelector('iframe');
-let ourl;
 
-iframe.addEventListener('load', console.log);
+const loadBtn = document.getElementById('load-btn');
+const downloader = document.getElementById('dl-btn');
+const previewer = document.getElementById('preview-btn');
+
+const actions = document.querySelector('.actions');
+
+let ourl = null;
 
 ws.onmessage = ({ data }) => {
   if ('string' === typeof data) {
@@ -19,18 +23,35 @@ ws.onmessage = ({ data }) => {
   if (data instanceof ArrayBuffer) {
     const blob = new Blob([data], { type: 'application/pdf' });
     ourl = URL.createObjectURL(blob);
-    iframe.src = ourl;
+
+    downloader.setAttribute('href', ourl);
+    downloader.setAttribute('download', 'Sheet.pdf');
+
+    previewer.setAttribute('href', ourl);
+
+    actions.classList.add('shown');
     return;
   }
 };
 
-document.querySelector('button').addEventListener('click', () => {
+loadBtn.addEventListener('click', () => {
   if (ws.readyState !== ws.OPEN) {
     alert('Disconnected, Reload the page to fix!');
     return;
   }
+  const url = input.value.trim();
+  if (!url) return;
 
-  if (ourl) URL.revokeObjectURL(ourl);
+  if (ourl) {
+    downloader.removeAttribute('href');
+    downloader.removeAttribute('download');
+
+    previewer.removeAttribute('href');
+
+    URL.revokeObjectURL(ourl);
+    ourl = null;
+  }
   logger.innerHTML = '';
-  ws.send(input.value.trim());
+  actions.classList.remove('shown');
+  ws.send(url);
 });
