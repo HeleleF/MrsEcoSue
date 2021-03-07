@@ -1,6 +1,7 @@
 ### Own stuff
 udebug
 *.d.ts
+tmp.pdf
 
 ### Node ###
 # Logs
