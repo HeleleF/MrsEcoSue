@@ -65,6 +65,10 @@ export class Loader {
       this.ws.send('No data!');
       return;
     }
+    if (!uri.startsWith(SECRETS.MES_DOMAIN)) {
+      this.ws.send('Not a valid link!');
+      return;
+    }
 
     console.log('Adding uri', uri);
     this.ws.send('Starting');
