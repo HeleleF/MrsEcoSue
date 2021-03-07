@@ -8,12 +8,11 @@
   "private": true,
   "main": "dist/server.js",
   "scripts": {
-    "start": "npm run serve:prod",
+    "start": "node dist/server.js",
     "serve:local": "nodemon -r dotenv/config dist/server.js",
-    "serve:prod": "npm run ts:build && node dist/server.js",
+    "heroku-postbuild": "tsc",
     "dev": "concurrently \"npm run ts:watch\" \"npm run serve:local\"",
     "ts:watch": "tsc -w",
-    "ts:build": "tsc",
     "deploy": "git push heroku master"
   },
   "repository": {

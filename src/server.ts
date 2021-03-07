@@ -1,5 +1,5 @@
 import express from 'express';
-import { Server as WebsocketServer } from 'ws';
+import WebSocket, { Server as WebsocketServer } from 'ws';
 import { join } from 'path';
 import { Loader } from './loader';
 
@@ -11,10 +11,10 @@ const app = express()
 
 const wss = new WebsocketServer({ server: app });
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws: WebSocket) => {
   console.log('Client connected');
 
   const loader = new Loader(ws);
-  ws.on('message', (data) => loader.createPDF(data.toString()));
+  ws.on('message', (data: WebSocket.Data) => loader.createPDF(data.toString()));
   ws.on('close', () => console.log('Client disconnected'));
 });

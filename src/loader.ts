@@ -33,9 +33,9 @@ export class Loader {
       const frag = JSDOM.fragment(data);
 
       const div = frag.querySelectorAll('div')[1];
-      const attr = Object.values(div.dataset)[0];
+      const attr = Object.values(div.dataset)[0] ?? '{}';
 
-      const config = JSON.parse(attr ?? '{}') as MSEConfig;
+      const config = JSON.parse(attr) as MSEConfig;
       const { id, pages_count, title, tags } = config.store?.page?.data?.score ?? {};
 
       if (!id) {
