@@ -6,9 +6,8 @@ import PDFDocument from 'pdfkit';
 import SVGtoPDF from 'svg-to-pdfkit';
 
 import { MSEConfig, APIResponse } from './utils';
-import { createWriteStream } from 'fs';
-import { readFile } from 'fs/promises';
 import { SECRETS } from './secrets';
+import {buffer as getBuffer} from 'get-stream';
 
 export class Loader {
   private ws: WebSocket;
@@ -56,7 +55,42 @@ export class Loader {
 
     } catch (err) {
       console.log(err);
-      return { error: 'Axios error' };
+      return { error: `Axios error: ${err.code}` };
+    }
+  }
+
+  private async loadPages(count: number, uri: string, sid: number) {
+    const jobs = Array.from({ length: count }, async (_, idx) => {
+      const { data } = await this.axios.get<APIResponse>(
+        `${SECRETS.MES_API_URL}?id=${sid}&index=${idx}&type=img&v2=1`,
+        {
+          headers: {
+            Authorization: SECRETS.MES_API_TOKEN,
+          },
+        }
+      );
+
+      const sheetUrl = data?.info?.url;
+      if (!sheetUrl) return null;
+
+      if (sheetUrl.includes('svg')) {
+        const { data: svg } = await this.axios.get<string>(sheetUrl);
+        return svg;
+      }
+
+      const { data: arrBuf } = await this.axios.get<ArrayBuffer>(sheetUrl, {
+        responseType: 'arraybuffer',
+      });
+      return Buffer.from(arrBuf);
+    });
+
+    this.ws.send('Loading pages...');
+    try {
+      const result = await Promise.all(jobs);
+      return result;
+    } catch (err) {
+      console.log(err);
+      return [];
     }
   }
 
@@ -82,6 +116,12 @@ export class Loader {
 
     const { pages, sid, title, tags } = metadata!;
 
+    const result = await this.loadPages(pages, uri, sid);
+    if (!result.length) {
+      this.ws.send('Failed to get pages!');
+      return; 
+    }
+
     const doc = new PDFDocument({
       layout: 'portrait',
       autoFirstPage: false,
@@ -92,41 +132,9 @@ export class Loader {
       },
       margin: 0,
     });
-    doc.pipe(createWriteStream('tmp.pdf'));
 
-    const jobs = Array.from({ length: pages }, async (_, idx) => {
-      const { data } = await this.axios.get<APIResponse>(
-        `${SECRETS.MES_API_URL}?id=${sid}&index=${idx}&type=img&v2=1`,
-        {
-          headers: {
-            Authorization: SECRETS.MES_API_TOKEN,
-          },
-        }
-      );
-
-      const sheetUrl = data?.info?.url;
-      if (!sheetUrl) return null;
-
-      if (sheetUrl.includes('svg')) {
-        const { data: svg } = await this.axios.get<string>(sheetUrl);
-        return svg;
-      }
-
-      const { data: arrBuf } = await this.axios.get<ArrayBuffer>(sheetUrl, {
-        responseType: 'arraybuffer',
-      });
-      return Buffer.from(arrBuf);
-    });
-
-    this.ws.send('Loading pages...');
-    const result = await Promise.all(jobs).catch(_ => []);
-
-    if (!result.length) {
-      this.ws.send('Failed to get pages!');
-      return; 
-    }
-
-    result.forEach((img) => {
+    this.ws.send('Creating pdf...');
+    result.forEach((img: string | Buffer | null) => {
       if (!img) return;
 
       doc.addPage();
@@ -143,9 +151,6 @@ export class Loader {
       }
     });
     doc.end();
-    this.ws.send('Finished');
-    const buf = await readFile('tmp.pdf');
-
-    this.ws.send(buf);
+    this.ws.send(await getBuffer(doc));
   }
 }
