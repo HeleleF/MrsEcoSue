@@ -19,12 +19,21 @@ export interface MSEConfig {
     page?: {
       data?: {
         score?: {
-          id: number,
-          title: string,
-          pages_count: number,
-          tags: string[]
-        }
-      }
-    }
-  }
+          id: number;
+          title: string;
+          pages_count: number;
+          tags: string[];
+        };
+      };
+    };
+    jmuse_settings?: {
+      score_player?: {
+        json?: {
+          metadata?: {
+            dimensions: string;
+          };
+        };
+      };
+    };
+  };
 }
