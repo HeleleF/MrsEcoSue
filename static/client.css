@@ -139,23 +139,18 @@ body {
 }
 
 #dl-btn {
-  color: greenyellow;
+  color: green;
+  display: none;
+
+  transition: ease-in;
 }
 
-#preview-btn {
-  color: red;
+#dl-btn.shown {
+  display: flex;
 }
 
 .btn:focus {
   outline: none;
-}
-
-.actions {
-  display: none;
-}
-
-.actions.shown {
-  display: flex;
 }
 
 @media screen and (max-width: 992px) {
