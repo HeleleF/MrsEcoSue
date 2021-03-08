@@ -1,13 +1,13 @@
 import WebSocket from 'ws';
 import axios, { AxiosInstance } from 'axios';
 import { JSDOM } from 'jsdom';
+import { buffer as asBuffer } from 'get-stream';
+import {writeFile} from 'fs/promises';
 
 import PDFDocument from 'pdfkit';
 import SVGtoPDF from 'svg-to-pdfkit';
 
 import { MSEConfig, APIResponse } from './utils';
-import { createWriteStream } from 'fs';
-import { readFile } from 'fs/promises';
 import { SECRETS } from './secrets';
 
 export class Loader {
@@ -22,12 +22,15 @@ export class Loader {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:81.0) Gecko/20100101 Firefox/81.0',
         'Accept-Language': 'en-US,en;q=0.8',
+      },
+      proxy: {
+        host: '127.0.0.1',
+        port: 8888
       }
     });
   }
 
   private async extractMetadata(uri: string) {
-
     try {
       const { data } = await this.axios.get<string>(uri);
       const frag = JSDOM.fragment(data);
@@ -36,7 +39,8 @@ export class Loader {
       const attr = Object.values(div.dataset)[0] ?? '{}';
 
       const config = JSON.parse(attr) as MSEConfig;
-      const { id, pages_count, title, tags } = config.store?.page?.data?.score ?? {};
+      const { id, pages_count, title, tags } =
+        config.store?.page?.data?.score ?? {};
 
       if (!id) {
         return { error: 'No sid found!' };
@@ -45,18 +49,19 @@ export class Loader {
         return { error: 'No page count found!' };
       }
 
+      writeFile(`${id}.json`, attr);
+
       return {
         metadata: {
           sid: id,
           pages: pages_count,
           title: title || 'Sheet',
-          tags: tags ?? []
-        }
+          tags: tags ?? [],
+        },
       };
-
     } catch (err) {
       console.log(err);
-      return { error: 'Axios error' };
+      return { error: `Axios error: ${err.code}` };
     }
   }
 
@@ -71,10 +76,10 @@ export class Loader {
     }
 
     console.log('Adding uri', uri);
-    this.ws.send('Starting');
+    this.ws.send('Loading metadata...');
 
     const { metadata, error } = await this.extractMetadata(uri);
-  
+
     if (error) {
       this.ws.send(error);
       return;
@@ -92,7 +97,6 @@ export class Loader {
       },
       margin: 0,
     });
-    doc.pipe(createWriteStream('tmp.pdf'));
 
     const jobs = Array.from({ length: pages }, async (_, idx) => {
       const { data } = await this.axios.get<APIResponse>(
@@ -100,9 +104,11 @@ export class Loader {
         {
           headers: {
             Authorization: SECRETS.MES_API_TOKEN,
+            Referer: uri
           },
         }
       );
+      console.log(`Page ${idx}: ${JSON.stringify(data)}`);
 
       const sheetUrl = data?.info?.url;
       if (!sheetUrl) return null;
@@ -118,15 +124,16 @@ export class Loader {
       return Buffer.from(arrBuf);
     });
 
-    this.ws.send('Loading pages...');
-    const result = await Promise.all(jobs).catch(_ => []);
+    this.ws.send(`Loading ${pages} pages...`);
+    const result = await Promise.all(jobs).catch((_) => []);
 
     if (!result.length) {
       this.ws.send('Failed to get pages!');
-      return; 
+      return;
     }
 
-    result.forEach((img) => {
+    this.ws.send('Creating pdf...');
+    result.forEach((img: string | Buffer | null) => {
       if (!img) return;
 
       doc.addPage();
@@ -143,9 +150,6 @@ export class Loader {
       }
     });
     doc.end();
-    this.ws.send('Finished');
-    const buf = await readFile('tmp.pdf');
-
-    this.ws.send(buf);
+    this.ws.send(await asBuffer(doc));
   }
 }
