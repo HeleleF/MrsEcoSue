@@ -2,10 +2,12 @@ import express from 'express';
 import WebSocket, { Server as WebsocketServer } from 'ws';
 import { join } from 'path';
 import { Loader } from './loader';
+import helmet from 'helmet';
 
 const port = process.env.PORT || 3000;
 
 const app = express()
+  .use(helmet())
   .use(express.static(join(__dirname, '..', 'static')))
   .listen(port, () => console.log(`Server is listening on port ${port}.`));
 
