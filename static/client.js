@@ -10,6 +10,7 @@ const downloader = document.getElementById('dl-btn');
 let ourl = null;
 
 ws.addEventListener('message', ({ data }) => {
+
   if ('string' === typeof data) {
 
     const txt = document.createElement('p');
@@ -25,10 +26,12 @@ ws.addEventListener('message', ({ data }) => {
     downloader.setAttribute('download', 'Sheet.pdf');
 
     downloader.classList.add('shown');
+    loadBtn.removeAttribute('disabled');
   }
 });
 
 loadBtn.addEventListener('click', () => {
+
   if (ws.readyState !== ws.OPEN) {
     alert('Disconnected, Reload the page to fix!');
     return;
@@ -43,7 +46,10 @@ loadBtn.addEventListener('click', () => {
     URL.revokeObjectURL(ourl);
     ourl = null;
   }
+
   logger.innerHTML = '';
   downloader.classList.remove('shown');
+  loadBtn.setAttribute('disabled', 'disabled');
+
   ws.send(url);
 });

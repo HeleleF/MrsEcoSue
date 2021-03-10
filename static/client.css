@@ -138,6 +138,10 @@ body {
   border: 1px solid var(--ms-blue);
 }
 
+#load-btn:disabled {
+  cursor: not-allowed;
+}
+
 #dl-btn {
   color: green;
   display: none;
