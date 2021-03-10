@@ -1,4 +1,4 @@
-export const delay = async (timeInSec: number) => {
+export const delay = async (timeInSec: number = Math.floor(Math.random() * 6) + 5): Promise<void> => {
   return new Promise((resolve) => setTimeout(resolve, timeInSec * 1000));
 };
 
