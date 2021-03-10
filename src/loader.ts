@@ -5,9 +5,10 @@ import { JSDOM } from 'jsdom';
 import PDFDocument from 'pdfkit';
 import SVGtoPDF from 'svg-to-pdfkit';
 
-import { MSEConfig, APIResponse } from './utils';
+import { MSEConfig, APIResponse, delay } from './utils';
 import { SECRETS } from './secrets';
 import { buffer as getBuffer } from 'get-stream';
+import _chunk from 'lodash.chunk';
 
 export class Loader {
   private ws: WebSocket;
@@ -15,13 +16,16 @@ export class Loader {
 
   constructor(websocket: WebSocket) {
     this.ws = websocket;
-
     this.axios = axios.create({
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:81.0) Gecko/20100101 Firefox/81.0',
         'Accept-Language': 'en-US,en;q=0.8',
       },
+      // proxy: {
+      //   host: '127.0.0.1',
+      //   port: 8888
+      // }
     });
   }
 
@@ -67,39 +71,56 @@ export class Loader {
   }
 
   private async loadPages(count: number, sid: number, uri: string) {
-    const jobs = Array.from({ length: count }, async (_, idx) => {
-      const { data } = await this.axios.get<APIResponse>(
-        `${SECRETS.MES_API_URL}?id=${sid}&index=${idx}&type=img&v2=1`,
-        {
-          headers: {
-            Authorization: SECRETS.MES_API_TOKEN,
-            Referer: uri,
-          },
+
+    this.ws.send(`${count} pages found`);
+
+    const tasks = Array.from({ length: count }, (_, idx) => {
+      return async () => {
+        const { data } = await this.axios.get<APIResponse>(
+          `${SECRETS.MES_API_URL}?id=${sid}&index=${idx}&type=img&v2=1`,
+          {
+            headers: {
+              Authorization: SECRETS.MES_API_TOKEN,
+              Referer: uri,
+            },
+          }
+        );
+
+        const sheetUrl = data?.info?.url;
+        if (!sheetUrl) return null;
+
+        if (sheetUrl.includes('svg')) {
+          const { data: svg } = await this.axios.get<string>(sheetUrl);
+          return svg;
         }
-      );
 
-      const sheetUrl = data?.info?.url;
-      if (!sheetUrl) return null;
+        const { data: arrBuf } = await this.axios.get<ArrayBuffer>(sheetUrl, {
+          responseType: 'arraybuffer',
+        });
+        return Buffer.from(arrBuf);
+      };
+    });
+    const results: (string | Buffer | null)[] = [];
 
-      if (sheetUrl.includes('svg')) {
-        const { data: svg } = await this.axios.get<string>(sheetUrl);
-        return svg;
+    for (const chunk of _chunk(tasks, 10)) {
+
+      try {
+
+        this.ws.send(`Loading ${chunk.length} pages...`);
+
+        const part = await Promise.all(chunk.map(task => task()));
+        results.push(...part);
+
+        this.ws.send(`Delaying...`);
+        await delay();
+
+      } catch (err) {
+        console.log(err);
+        return [];
       }
 
-      const { data: arrBuf } = await this.axios.get<ArrayBuffer>(sheetUrl, {
-        responseType: 'arraybuffer',
-      });
-      return Buffer.from(arrBuf);
-    });
-
-    this.ws.send('Loading pages...');
-    try {
-      const result = await Promise.all(jobs);
-      return result;
-    } catch (err) {
-      console.log(err);
-      return [];
     }
+    return results;
   }
 
   async createPDF(uri: string) {
