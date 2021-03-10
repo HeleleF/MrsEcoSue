@@ -5,10 +5,11 @@ import { JSDOM } from 'jsdom';
 import PDFDocument from 'pdfkit';
 import SVGtoPDF from 'svg-to-pdfkit';
 
-import { MSEConfig, APIResponse, delay } from './utils';
-import { SECRETS } from './secrets';
 import { buffer as getBuffer } from 'get-stream';
 import _chunk from 'lodash.chunk';
+
+import { MSEConfig, APIResponse, delay } from './utils';
+import { SECRETS } from './secrets';
 
 export class Loader {
   private ws: WebSocket;
@@ -58,9 +59,10 @@ export class Loader {
         metadata: {
           sid: id,
           pages: pages_count,
+          // No ?? here, because then '' would be a valid title (which we dont want)
           title: title || 'Sheet',
           tags: tags ?? [],
-          // string are implicitly coerced into numbers when using greater-than, so this works
+          // strings are implicitly coerced into numbers when using greater-than, so this works
           landscape: width > height,
         },
       };
@@ -71,9 +73,9 @@ export class Loader {
   }
 
   private async loadPages(count: number, sid: number, uri: string) {
-
     this.ws.send(`${count} pages found`);
 
+    // Promises are wrapped in a function to prevent them from starting immediatley
     const tasks = Array.from({ length: count }, (_, idx) => {
       return async () => {
         const { data } = await this.axios.get<APIResponse>(
@@ -94,31 +96,35 @@ export class Loader {
           return svg;
         }
 
-        const { data: arrBuf } = await this.axios.get<ArrayBuffer>(sheetUrl, {
-          responseType: 'arraybuffer',
-        });
-        return Buffer.from(arrBuf);
+        if (sheetUrl.includes('png')) {
+          const { data: arrBuf } = await this.axios.get<ArrayBuffer>(sheetUrl, {
+            responseType: 'arraybuffer',
+          });
+          return Buffer.from(arrBuf);
+        }
+
+        // we dont handle anything other than .png and .svg (for now)
+        return null;
       };
     });
     const results: (string | Buffer | null)[] = [];
 
-    for (const chunk of _chunk(tasks, 10)) {
-
+    // only load 5 pages at the same time
+    for (const chunk of _chunk(tasks, 5)) {
       try {
-
         this.ws.send(`Loading ${chunk.length} pages...`);
 
-        const part = await Promise.all(chunk.map(task => task()));
+        // calling the function now "starts" the Promise
+        const part = await Promise.all(chunk.map((task) => task()));
         results.push(...part);
 
+        // wait a bit before loading the next chunk to prevent flooding the api server
         this.ws.send(`Delaying...`);
         await delay();
-
       } catch (err) {
         console.log(err);
         return [];
       }
-
     }
     return results;
   }
@@ -180,6 +186,7 @@ export class Loader {
       }
     });
     doc.end();
+
     this.ws.send(await getBuffer(doc));
   }
 }
