@@ -23,12 +23,21 @@ This uses `concurrently` to both watch for ts file changes and to reload the exp
 ## Heroku commands
 
 Deploy: `git push heroku master`
+
 Visit: `heroku open`
+
 Infos: `heroku apps:info`
+
 Add env var: `heroku config:set KEY=VALUE`
+
 Activate site: `heroku ps:scale web=1`
+
 Deactivate site: `heroku ps:scale web=0` (requests will error)
+
 View Logs: `heroku logs --tail`
+
 Create in EU: `heroku create --region eu`
+
 Update name: `heroku apps:rename the-new-name`
+
 Delete completely: `heroku apps:destroy --confirm the-app-name`
