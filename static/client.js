@@ -28,10 +28,6 @@
   });
 
   loadBtn.addEventListener('click', () => {
-    if (ws.readyState !== ws.OPEN) {
-      alert('Disconnected, Reload the page to fix!');
-      return;
-    }
     const url = input.value.trim();
     if (!url) return;
 
@@ -46,6 +42,11 @@
     logger.innerHTML = '';
     downloader.classList.remove('shown');
     loadBtn.setAttribute('disabled', 'disabled');
+
+    if (ws.readyState !== ws.OPEN) {
+      alert('Disconnected, Reload the page to fix!');
+      return;
+    }
 
     ws.send(url);
   });
