@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosInstance } from 'axios';
 import { JSDOM } from 'jsdom';
 
 import PDFDocument from 'pdfkit';
@@ -20,7 +20,7 @@ export class Loader {
     this.axios = axios.create({
       headers: {
         'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:81.0) Gecko/20100101 Firefox/81.0',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0',
         'Accept-Language': 'en-US,en;q=0.8',
       },
       // proxy: {
@@ -66,9 +66,14 @@ export class Loader {
           landscape: width > height,
         },
       };
-    } catch (err) {
+    } catch (err: unknown) {
       console.log(err);
-      return { error: `Axios error: ${err.code}` };
+
+      const e = err as AxiosError;
+
+      return {
+        error: `${e.isAxiosError ? 'Axios' : 'Normal'} error: ${e.code}`,
+      };
     }
   }
 
@@ -121,9 +126,9 @@ export class Loader {
         // wait a bit before loading the next chunk to prevent flooding the api server
         this.ws.send(`Delaying...`);
         await delay();
-      } catch (err) {
-        console.log(err);
-        return [];
+      } catch (err: any) {
+        console.log(err.message);
+        console.log(err.request)
       }
     }
     return results;
